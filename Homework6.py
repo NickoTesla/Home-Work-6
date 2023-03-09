@@ -1,36 +1,64 @@
 import os
 import shutil
-import string
+import sys
 import unicodedata
-# Списки розширень файлів
-image_exts = ('JPEG', 'PNG', 'JPG', 'SVG')
-video_exts = ('AVI', 'MP4', 'MOV', 'MKV')
-document_exts = ('DOC', 'DOCX', 'TXT', 'PDF', 'XLSX', 'PPTX')
-music_exts = ('MP3', 'OGG', 'WAV', 'AMR')
-archive_exts = ('ZIP', 'GZ', 'TAR')
-# Словник зі списками файлів різних типів
-file_dict = {
-    'images': [],
-    'videos': [],
-    'documents': [],
-    'music': [],
-    'archives': []
+
+# список розширень файлів для кожної категорії
+EXTENSIONS = {
+    'images': ('JPEG', 'JPG', 'PNG', 'SVG'),
+    'videos': ('AVI', 'MP4', 'MOV', 'MKV'),
+    'documents': ('DOC', 'DOCX', 'TXT', 'PDF', 'XLSX', 'PPTX'),
+    'music': ('MP3', 'OGG', 'WAV', 'AMR'),
+    'archives': ('ZIP', 'GZ', 'TAR'),
+    'unknown': set()
 }
-# Список розширень файлів, які вдалось знайти
-found_exts = []
-# Список невідомих розширень файлів
-unknown_exts = []
 
 
 def normalize(filename):
-    """Функція для нормалізації назви файлу"""
-    valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
-    filename = unicodedata.normalize(
-        'NFKD', filename).encode('ASCII', 'ignore')
-    filename = filename.decode('ASCII')
-    filename = ''.join(c for c in filename if c in valid_chars)
+    """
+    Проводить транслітерацію кирилічного алфавіту на латинський.
+    Замінює всі символи крім латинських літер, цифр на '_'.
+    """
+    filename = unicodedata.normalize('NFD', filename)
+    filename = filename.encode('ascii', 'ignore').decode('ascii')
+    filename = ''.join(c if c.isalnum() else '_' for c in filename)
     return filename
 
 
-def sort_files(folder):
-    """Функція для сортування файлі
+def sort_files(path):
+    """
+    Обробляє папку та всі її вкладені папки, сортує файли по категоріях
+    та перейменовує їх.
+    """
+    for root, dirs, files in os.walk(path):
+        for filename in files:
+            # Отримуємо розширення файлу
+            ext = filename.split('.')[-1].upper()
+            # Перевіряємо, до якої категорії відноситься файл
+            for category, extensions in EXTENSIONS.items():
+                if ext in extensions:
+                    # Копіюємо файл в відповідну папку
+                    src = os.path.join(root, filename)
+                    dst_dir = os.path.join(path, category)
+                    if not os.path.exists(dst_dir):
+                        os.makedirs(dst_dir)
+                    dst = os.path.join(dst_dir, normalize(filename))
+                    shutil.copy2(src, dst)
+                    # Додаємо розширення файлу до відомих розширень
+                    EXTENSIONS[category] = EXTENSIONS[category] + (ext,)
+                    break
+            else:
+                # Якщо розширення невідоме, додаємо його до списку невідомих розширень
+                EXTENSIONS['unknown'].add(ext)
+
+    # Виводимо результати
+    print('Відомі розширення: ', end='')
+    print(', '.join(sorted(set(e for extensions in EXTENSIONS.values()
+          for e in extensions))))
+    print('Розширення, які невідомі програмі: ', end='')
+    print(', '.join(sorted(EXTENSIONS['unknown'])))
+    for category in EXTENSIONS:
+        if category == 'unknown':
+            continue
+        print(f'Файли у категорії "{category}":')
+        for ext in
