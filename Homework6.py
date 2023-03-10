@@ -61,4 +61,14 @@ def sort_files(path):
         if category == 'unknown':
             continue
         print(f'Файли у категорії "{category}":')
-        for ext in
+        for ext in EXTENSIONS[category]:
+            print(f'  {ext}')
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Використання: python3 sort_files.py path")
+        sys.exit(1)
+
+    path = sys.argv[1]
+    sort_files(path)
